@@ -1,3 +1,4 @@
+build.log
 build*/
 dist/
 *.inc
@@ -15,6 +16,7 @@ docs/*
 !docs/porting-notes.md
 !docs/testing.md
 !docs/site/
+!docs/headless-plan.md
 
 # Android build outputs (CI builds these from source).
 platforms/android/.gradle/
