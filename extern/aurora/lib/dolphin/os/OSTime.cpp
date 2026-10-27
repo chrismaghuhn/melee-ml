@@ -1,8 +1,10 @@
+#include <atomic>
 #include <chrono>
 #include <ctime>
 #include <mutex>
 
 #include "internal.hpp"
+#include <aurora/aurora.h>
 #include <aurora/time.hpp>
 #include <dolphin/os.h>
 
@@ -18,6 +20,10 @@ namespace {
 constexpr SystemTime kGcnEpochUnix{946684800s};
 std::once_flag s_gameEpochOnce;
 OSTime s_gameEpochOffset;
+// Headless runs: OSGetTime stops following the wall clock and only moves
+// through aurora_set_virtual_time_now, so the game advances as fast as it runs.
+std::atomic<bool> s_virtualTime{false};
+std::atomic<OSTime> s_virtualNow{0};
 
 LocalTime system_time_to_local_time(SystemTime time) {
 #if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
@@ -93,8 +99,27 @@ void initialize_game_epoch() {
 OSTick OSGetTick() { return OSGetTime() & 0xFFFFFFFF; }
 
 OSTime OSGetTime() {
+  if (s_virtualTime.load(std::memory_order_acquire)) {
+    return s_virtualNow.load(std::memory_order_acquire);
+  }
   std::call_once(s_gameEpochOnce, initialize_game_epoch);
   return s_gameEpochOffset + duration_to_ticks(aurora::time::game_clock::now().time_since_epoch());
+}
+
+void aurora_set_virtual_time(bool enabled) {
+  if (enabled && !s_virtualTime.load(std::memory_order_acquire)) {
+    s_virtualNow.store(OSGetTime(), std::memory_order_release);
+  }
+  s_virtualTime.store(enabled, std::memory_order_release);
+}
+
+bool aurora_virtual_time_enabled() { return s_virtualTime.load(std::memory_order_acquire); }
+
+void aurora_set_virtual_time_now(int64_t ticks) {
+  // Monotonic: a jump backwards would make every periodic alarm re-fire.
+  OSTime cur = s_virtualNow.load(std::memory_order_acquire);
+  while (ticks > cur && !s_virtualNow.compare_exchange_weak(cur, ticks, std::memory_order_acq_rel)) {
+  }
 }
 
 OSTime OSGetNativeTime() { return duration_to_ticks(aurora::time::native_clock::now().time_since_epoch()); }

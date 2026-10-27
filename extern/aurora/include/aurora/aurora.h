@@ -156,6 +156,11 @@ AuroraWindowSize aurora_get_window_size();
 AuroraBackend aurora_get_backend();
 const AuroraBackend* aurora_get_available_backends(size_t* count);
 float aurora_get_timescale();
+/** Virtual OS time for headless runs: OSGetTime stops following the wall
+ *  clock and only moves forward through aurora_set_virtual_time_now (OS ticks). */
+void aurora_set_virtual_time(bool enabled);
+bool aurora_virtual_time_enabled();
+void aurora_set_virtual_time_now(int64_t ticks);
 
 #ifdef __cplusplus
 }

@@ -12,6 +12,7 @@
 #include "gmmain_lib.h"
 #include "gmscdata.h"
 #include <dolphin/os/OSThread.h>
+#include <dolphin/vi.h>
 #include <melee/db/db.h>
 #include <melee/if/ifcoget.h>
 #include <melee/lb/lb_013B.h>
@@ -456,6 +457,12 @@ void gm_801A4D34(void (*on_frame)(void), GameSceneInfo* info)
         }
 
 #ifdef TARGET_PC
+        /* PORT: headless runs draw nothing; the boundary still runs so
+         * alarms, events and MELEE_EXIT_AFTER_FRAMES keep their cadence. */
+        if (pc_headless()) {
+            lb_800195D0();
+            VIWaitForRetrace();
+        } else {
         pc_net_render_audit(false);
 #endif
         lb_800195D0();
@@ -468,6 +475,7 @@ void gm_801A4D34(void (*on_frame)(void), GameSceneInfo* info)
         HSD_VICopyXFBAsync(HSD_RP_SCREEN);
 #ifdef TARGET_PC
         pc_net_render_audit(true);
+        }
 #endif
         if (temp_r25->unk_4 != -2U) {
             temp_r25->unk_4++;

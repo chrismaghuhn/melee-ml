@@ -1601,7 +1601,7 @@ bool pc_net_active(void) {
  * seeded from the local machine (see gmTitle_801A165C). Offline play keeps
  * every one of them. */
 bool pc_net_deterministic(void) {
-    return net.active || record_active() || net.synctest;
+    return net.active || record_active() || net.synctest || pc_headless();
 }
 
 int pc_net_local_player(void) {

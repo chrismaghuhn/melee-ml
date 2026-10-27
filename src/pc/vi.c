@@ -106,7 +106,8 @@ void pc_frame_boundary(void) {
         timing_debug = getenv("MELEE_NET_DEBUG") != NULL;
     if (s_in_frame) {
         u64 started = timing_debug ? SDL_GetTicksNS() : 0;
-        aurora_end_frame();
+        if (!pc_headless())
+            aurora_end_frame();
         if (timing_debug) {
             u64 elapsed = SDL_GetTicksNS() - started;
             if (elapsed > 20000000ull)
@@ -276,7 +277,7 @@ void pc_frame_boundary(void) {
         const u64 want = next_sim_ns - now;
         /* On standard 60 Hz VSync, aurora_begin_frame already waited for VBlank. On high-refresh
          * (120/144/240 Hz) or VSync-off, this throttles simulation to exact 60 Hz. */
-        if (PC_PACE_ALWAYS || !aurora_vsync_enabled() || want > 2000000ull) {
+        if (!pc_headless() && (PC_PACE_ALWAYS || !aurora_vsync_enabled() || want > 2000000ull)) {
             u64 started = (fps_log || timing_debug) ? SDL_GetTicksNS() : 0;
             bool pace_trace = aurora_trace_begin("Simulation pacing sleep");
             pc_pace_wait(want);
@@ -301,8 +302,8 @@ void pc_frame_boundary(void) {
 
     /* aurora_begin_frame returns false while minimized/paused; keep pumping.
      * Sleep a frame between attempts: without it a minimized window spins a
-     * core at 100% polling SDL. */
-    for (;;) {
+     * core at 100% polling SDL. Headless runs never begin a frame. */
+    while (!pc_headless()) {
         u64 started = timing_debug ? SDL_GetTicksNS() : 0;
         bool begin_trace = aurora_trace_begin("Melee begin frame / slot wait");
         bool begun = aurora_begin_frame();
@@ -409,6 +410,15 @@ void VIWaitForRetrace(void) {
 
 u32 VIGetRetraceCount(void) {
     return s_retrace_count;
+}
+
+bool pc_headless(void) {
+    static int on = -1;
+    if (on < 0) {
+        const char* e = getenv("MELEE_HEADLESS");
+        on = e != NULL && e[0] == '1';
+    }
+    return on;
 }
 
 u64 pc_sim_period_ns(void) {

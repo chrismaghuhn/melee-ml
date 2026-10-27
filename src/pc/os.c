@@ -9,6 +9,7 @@
  * updates with OSDisableInterrupts/OSRestoreInterrupts, so those are mapped
  * onto a recursive mutex to keep that atomicity.
  */
+#include <aurora/aurora.h>
 #include <dolphin/os.h>
 #include <dolphin/os/OSAlarm.h>
 #include <dolphin/os/OSReset.h>
@@ -238,6 +239,10 @@ void pc_os_wait_alarm(void) {
     }
     OSRestoreInterrupts(intr);
     const OSTime wait = next - OSGetTime();
+    if (next != 0 && wait > 0 && aurora_virtual_time_enabled()) {
+        aurora_set_virtual_time_now(next); /* nothing to wait for: time is ours */
+        return;
+    }
     if (next != 0 && wait > 0) {
 #ifdef __EMSCRIPTEN__
         /* At most 1 ms, where SDL's delay spins the page's only thread; hand

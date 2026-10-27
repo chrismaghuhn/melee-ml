@@ -698,6 +698,10 @@ MELEE_EXPORT int main(int argc, char* argv[]) {
     pc_menu_init(info.window);
     pc_platform_init();
     aurora_card_set_present(card);
+    if (pc_headless()) {
+        aurora_set_virtual_time(true);
+        pc_log_line("headless: virtual OS time, no pacing, no rendering");
+    }
     int rc = melee_main();
     pc_shutdown_once();
     return rc;

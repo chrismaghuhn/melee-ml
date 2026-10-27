@@ -3,6 +3,29 @@
 Basis: melee-pc @ `0fb0af3`. Ziel: `env.step(pads) -> obs` mit weit über 60 FPS,
 schneller Reset, mehrere Instanzen parallel.
 
+## Stand
+
+`MELEE_HEADLESS=1` (Branch `headless`):
+
+- `OSGetTime` ist virtuell (`aurora_set_virtual_time`, `extern/aurora/lib/dolphin/os/OSTime.cpp`);
+  `pc_os_wait_alarm` springt zum nächsten fälligen Alarm statt zu schlafen.
+- `pc_frame_boundary` pacet nicht und ruft `aurora_begin_frame`/`aurora_end_frame` nicht auf.
+- Die Scene-Loop (`gmscene.c`) überspringt den Render-Pass, ruft aber weiter `VIWaitForRetrace`.
+- `pc_net_deterministic()` ist im Headless-Modus an (Render-Callbacks schreiben keine Physik).
+
+Messung (Ryzen 7 5800X, VS-Debug-Match, keine Eingaben): 6000 Frames in ~0,4–0,6 s,
+also grob 10.000–15.000 Frames/s auf einem Kern; vorher fest 60.
+
+Determinismus (`MELEE_NET_RECORD`/`REPLAY` + `MELEE_NET_STATE_LOG`):
+- Headless-Aufnahme vs. Headless-Replay: Fighter-Zustand pro Frame identisch (6000 Frames).
+- Gerenderter Lauf vs. Headless: identisch über die 1500 gemeinsamen Frames.
+- Der periodische Vollspeicher-Hash (`fullhash`) weicht schon zwischen zwei *gerenderten*
+  Solo-Läufen ab, ist also kein Headless-Effekt; vor Snapshot-basiertem Branching klären.
+- Schwacher Test: ohne Eingaben. Mit echten Eingaben wiederholen, sobald die Pad-Bridge steht.
+
+Noch offen: Start ohne Fenster/GPU (Null-Backend will eine Surface), Launcher-Shader-Wartezeit
+überspringen, Audio abschalten, Pad-Bridge zu Python.
+
 ## Was schon da ist
 
 | Baustein | Wo | Nutzen fürs ML |
